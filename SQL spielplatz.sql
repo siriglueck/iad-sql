@@ -79,7 +79,7 @@ SELECT * FROM artikel
 WHERE farbe IN('rot','blau');
 
 SELECT * FROM artikel
-WHERE farbe NOT IN('rot','grün');
+WHERE farbe NOT IN('rot','grÃ¼n');
 
 SELECT * FROM lieferant
 WHERE lstadt NOT IN('Hamburg','Aachen');
@@ -147,14 +147,14 @@ SELECT * FROM lieferung
 WHERE ldatum
 NOT BETWEEN '01.07.1990' AND '30.07.1990';
 
-/* Distinct wirkt sich auf den gesamten Datensatz im Ergebnis aus, deswegen wird es direkt in der SELECT abfrage angegeben. Die gleichheit der Datensätze werden überprüft.
+/* Distinct wirkt sich auf den gesamten Datensatz im Ergebnis aus, deswegen wird es direkt in der SELECT abfrage angegeben. Die gleichheit der DatensÃ¤tze werden Ã¼berprÃ¼ft.
 */
 
 SELECT lnr FROM lieferung;
--- ergebnis sind 12 Datensätze
+-- ergebnis sind 12 DatensÃ¤tze
 
 SELECT DISTINCT lnr FROM lieferung;
--- ergebniss 4 Datensätze
+-- ergebniss 4 DatensÃ¤tze
 
 
 -- Berrechnen der Ergebnismengen
@@ -182,7 +182,7 @@ SELECT 'Die '+aname
 FROM artikel;
 
 
--- 1. gesucht sind alle Artikel die über 13 gramm wiegen
+-- 1. gesucht sind alle Artikel die Ã¼ber 13 gramm wiegen
 SELECT * FROM artikel
 WHERE gewicht > 13;
 
@@ -190,14 +190,14 @@ WHERE gewicht > 13;
 SELECT * FROM lieferant
 WHERE lname NOT LIKE '%b%';
 
--- 3. gesucht sind alle lieferungen die zwischen dem 06.08. und dem 21.08.1990 getätigt wurden
+-- 3. gesucht sind alle lieferungen die zwischen dem 06.08. und dem 21.08.1990 getÃ¤tigt wurden
 SELECT * FROM lieferung
 WHERE ldatum BETWEEN '06.08.1990' AND '21.08.1990';
 
--- 4. gesucht sind alle Schrauben die nicht blau oder grün sind
+-- 4. gesucht sind alle Schrauben die nicht blau oder grÃ¼n sind
 SELECT * FROM artikel
 WHERE aname = 'Schraube'
-AND farbe NOT IN('blau','grün');
+AND farbe NOT IN('blau','grÃ¼n');
 
 -- 5. gesucht sind alle artikel die mit dem Buchstaben e enden
 SELECT * FROM artikel
@@ -207,7 +207,7 @@ WHERE aname LIKE '%e';
 SELECT * FROM artikel
 WHERE aname LIKE '_c%';
 
--- 7. gesucht sind alle artikel die mehr als 15 gramm wiegen oder deren lagermenge größer als 600 ist
+-- 7. gesucht sind alle artikel die mehr als 15 gramm wiegen oder deren lagermenge grÃ¶ÃŸer als 600 ist
 SELECT * FROM artikel
 WHERE gewicht > 15 
 OR amenge > 600;
@@ -225,7 +225,7 @@ FROM artikel
 ORDER BY 'Artikelname' ASC;
 
 -- Auflisten der TOP n Werte
--- gesucht sind die drei Lieferungen mit den höchsten liefermengen
+-- gesucht sind die drei Lieferungen mit den hÃ¶chsten liefermengen
 SELECT TOP(3) lnr, lmenge, ldatum 
 FROM lieferung
 ORDER BY lmenge DESC;
@@ -252,7 +252,7 @@ FROM artikel;
 SELECT lnr, anr, lmenge,
 CASE
 	WHEN lmenge BETWEEN 0 AND 100
-		THEN 'da hätte mehr draufgepasst'
+		THEN 'da hÃ¤tte mehr draufgepasst'
 	WHEN lmenge BETWEEN 101 AND 300 
 		THEN 'gut ausgelastet'
 	ELSE 'Anzeige ist raus!'
