@@ -1,0 +1,259 @@
+-- SQL Tag 3 20.08.2025
+
+
+/*
+Wiederholungsaufgaben
+
+1.gesucht sind alle Lieferanten die an dritter Stelle ihres Namens ein a tragen
+2.gesucht sind alle Lieferanten die den Artikel A04 nicht geliefert haben
+3.gesucht sind alle Lieferanten die in Ludwigshafen leben und deren Name mit B beginnt
+4.gesucht ist die nummer, der name und die farbe aller Artikel, die am 
+	02.08.1990 ausgeliefert wurden
+5.gesucht sind die Daten aller Artikel die von Lieferant L02 ausgeliefert wurden
+6.gesucht ist der Name und der Wohnort der Lieferanten, die den Artikel A05 lieferten.
+7.gesucht sind alle Lieferanten die an dem Ort leben, an dem der Artikel A05 gelagert wird
+8.gesucht ist das gewicht aller Artikel in Kg
+
+*/
+
+--1.gesucht sind alle Lieferanten die an dritter Stelle ihres Namens ein a tragen
+SELECT * FROM lieferant
+WHERE lname LIKE '__a%';
+
+--2.gesucht sind alle Lieferanten die den Artikel A04 nicht geliefert haben
+SELECT * FROM lieferant
+WHERE lnr NOT IN (SELECT lnr FROM lieferung
+					WHERE anr ='A04');
+
+--3.gesucht sind alle Lieferanten die in Ludwigshafen leben und deren Name mit B beginnt
+SELECT * FROM lieferant
+WHERE lstadt= 'Ludwigshafen' AND lname LIKE 'B%';
+
+--4.gesucht ist die nummer, der name und die farbe aller Artikel, die am 
+-- 	02.08.1990 ausgeliefert wurden
+SELECT anr, aname, farbe FROM artikel
+WHERE anr IN (SELECT anr FROM lieferung
+				WHERE ldatum='02.08.1990');
+
+--5.gesucht sind die Daten aller Artikel die von Lieferant L02 ausgeliefert wurden
+SELECT * FROM artikel
+WHERE anr IN (SELECT anr FROM lieferung
+				WHERE lnr = 'L02');
+
+--6.gesucht ist der Name und der Wohnort der Lieferanten, die den Artikel A05 lieferten.
+SELECT lname, lstadt FROM lieferant
+WHERE lnr IN (SELECT lnr FROM lieferung
+				WHERE anr = 'A05');
+
+--7.gesucht sind alle Lieferanten die an dem Ort leben, an dem der Artikel A05 gelagert wird
+SELECT * FROM lieferant
+WHERE lstadt IN (SELECT astadt FROM artikel
+					WHERE anr= 'A05');
+
+--8.gesucht ist das gewicht aller Artikel in Kg
+SELECT gewicht, gewicht * 0.001 AS 'Gewicht in Kg' FROM artikel;
+
+--------------------------------------------------------------------------------------------
+-- Die Operatoren ANY und ALL
+
+-- ALL bedeutet "größer als jeder Wert"
+-- ANY bedeutet "Größer als mindestens ein Wert"
+
+-- gesucht sind die artikel die ein größeres Gewicht als Ludwigshafener Artikel haben
+SELECT * FROM artikel
+WHERE gewicht > (SELECT MAX(gewicht) FROM artikel
+					WHERE astadt= 'Ludwigshafen');
+
+-- mit ALL benötigt man den MAX Befehl nicht mehr
+SELECT * FROM artikel
+WHERE gewicht >ALL (SELECT gewicht FROM artikel
+					WHERE astadt= 'Ludwigshafen');
+
+-- gesucht sind die artikel, deren gewicht größer als das kleinste gewicht Ludwigshafener artikel ist
+SELECT * FROM artikel
+WHERE gewicht > (SELECT MIN(gewicht) FROM artikel
+					WHERE astadt= 'Ludwigshafen');
+
+
+-- Mit ANY 
+SELECT * FROM artikel
+WHERE gewicht >ANY (SELECT gewicht FROM artikel
+					WHERE astadt= 'Ludwigshafen')
+
+---------------------------------------------------------------------------------
+
+-- EXISTS und NOT EXISTS
+
+-- die Bedingung für den Prüfsatz der äußeren Abfrage wird als WAHR gewertet
+-- wenn die innere Abfrage zumindest einen Wert liefert
+
+-- Die innere Abfrage ist dabei immer von der äußeren abhängig
+
+-- gesucht sind Ortsnamen, die Wohnort aber nicht Lagerort sind
+
+-- ohne EXISTS
+SELECT lstadt FROM lieferant
+WHERE lstadt NOT IN (SELECT astadt FROM artikel);
+
+-- Mit EXISTS
+SELECT lstadt FROM Lieferant
+WHERE NOT EXISTS (SELECT * FROM artikel
+					WHERE lstadt=astadt);
+
+-- gesucht sind lieferanten, die bereits lieferten
+
+-- ohne EXISTS
+SELECT * FROM lieferant
+WHERE lnr IN (SELECT lnr FROM lieferung);
+
+-- mit EXISTS
+SELECT * FROM lieferant
+WHERE EXISTS (SELECT * FROM lieferung
+				WHERE lieferant.lnr=lieferung.lnr);
+
+-- Tabellen können einmalig benannt werden um sich schreibarbeit zu sparen
+SELECT * FROM lieferant a 
+WHERE EXISTS (SELECT * FROM lieferung b
+				WHERE a.lnr=b.lnr);
+
+
+
+--  Ortsnamen die sowohl Wohn- als auch Lagerorte sind
+SELECT DISTINCT lstadt FROM lieferant
+WHERE EXISTS (SELECT * FROM artikel
+				WHERE astadt=lstadt);
+
+-- Nummern und Namen der Lieferanten, die den Artikel A05 nicht lieferten
+SELECT lnr, lname FROM lieferant a
+WHERE NOT EXISTS (SELECT * FROM lieferung b
+					WHERE a.lnr=b.lnr
+					AND anr= 'A05');
+
+-- Nummern aller Lieferanten, die mindestens einen Artikel lieferten, den auch 
+-- Lieferant L03 geliefert hat
+SELECT lnr FROM lieferung a
+WHERE EXISTS (SELECT * FROM lieferung b
+				WHERE a.anr=b.anr
+				AND lnr='L03');
+
+-- oder etwas länger-- würde ich aber nicht empfehlen
+SELECT lnr FROM lieferung a
+WHERE EXISTS (SELECT * FROM lieferung b
+				WHERE a.anr=b.anr 
+				AND anr IN(SELECT anr FROM lieferung
+							WHERE lnr='L03'));
+
+-------------------------------------------------------------------------------------
+
+-- Datums- und Zeitfunktionen
+
+SELECT GETDATE();
+SELECT GETUTCDATE();
+
+-- nur den aktuellen Tag, Monat oder das Jahr ausgeben
+SELECT DAY(GETDATE());
+SELECT MONTH(GETDATE());
+SELECT YEAR(GETDATE());
+
+
+-- ersten Wochentag
+
+SELECT @@DATEFIRST;
+
+SET language us_english;
+
+SET language german;
+
+-- Datumsberechnung
+
+-- Zahlungsziel 35 Tage nach dem Lieferdatum
+SELECT anr, ldatum, DATEADD(dd,35,ldatum) AS 'Zahlungsziel' FROM lieferung;
+
+-- Vor wieviel Monaten waren die Lieferungen
+SELECT lnr, anr, ldatum, DATEDIFF(mm,ldatum,GETDATE()) FROM lieferung;
+
+
+-- den aktuellen Monat als String ausgeben lassen
+SELECT DATENAME(mm,GETDATE());
+
+SELECT DATENAME(dw,GETDATE());
+
+
+-- alle Lieferungen vom August 1990
+SELECT * FROM lieferung
+WHERE DATEPART(yy,ldatum) = 1990
+AND DATEPART(mm,ldatum) = 8;
+
+-- Konvertieren von Datumswerten
+-- für das Konvertieren wird der Befehl CONVERT()
+
+-- Alle Lieferungenvom Juli 90, dabei soll das Lieferdatum im deutschen Format
+-- angezeigt werden
+
+SELECT lnr,anr,ldatum, CONVERT(char(10),ldatum,104) AS 'Lieferdatum' FROM lieferung
+WHERE DATEPART(yy,ldatum) = 1990
+AND DATEPART(mm,ldatum) = 7;
+
+----------------------------------------------------------------------------------------
+
+-- Einfügen von Daten
+
+-- INSERT INTO Befehl ohne nähere Definition der Daten
+-- dabei muss auf die Reihenfolge der Spalten der Tabelle geachtet werden
+
+
+-- der Lieferant L07 Horst Hustensaftschmuggler soll angelegt werden
+
+INSERT INTO lieferant VALUES ('L07','Hustensaftschmuggler',20,'Erfurt');
+
+SELECT * FROM lieferant;
+
+--veränderte Reihenfolge
+INSERT INTO lieferant (lstadt,lnr,lname,status)
+VALUES ('Weimar','L08','Conny',10);
+
+-- unbekannt Werte aufnehmen
+INSERT INTO lieferant VALUES ('L09','Okupenko',10,NULL);
+
+-- oder
+INSERT INTO lieferant (lnr,lname)
+VALUES ('L10','Harry');
+
+
+
+-- ändern von Daten
+-- einfache UPDATE Anweisung
+
+-- Okupenko hat sich den status 20 verdient
+UPDATE lieferant SET status= 20
+WHERE lname='Okupenko';
+
+SELECT * FROM lieferant;
+
+-- Lieferant L10 wohnt jetzt in Köln (arme Sau)
+UPDATE lieferant SET lstadt='Köln'
+WHERE lnr='L10';
+
+-- löschen von Daten
+
+-- Lieferant L10 hat mehrfach Klopapier geklaut
+
+DELETE FROM lieferant
+WHERE lnr='L10';
+
+-- löschen aller Lieferanten die in Köln wohnen
+
+DELETE FROM lieferant
+WHERE lstadt='Köln';
+
+-- löschen aller lieferungen eines lieferanten
+
+-- damit wir lieferungen löschen können, geben wir Okupenko erstmal eine lieferung
+INSERT INTO lieferung VALUES ('L09','A03',300,'01.09.1990');
+
+SELECT * FROM artikel;
+
+-- löschen der lieferungen
+DELETE FROM lieferung
+WHERE lnr = (SELECT lnr FROM lieferant
+				WHERE lname= 'Okupenko');
