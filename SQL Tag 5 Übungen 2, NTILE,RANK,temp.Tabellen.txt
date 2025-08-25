@@ -1,0 +1,106 @@
+
+
+-- Übungen
+
+--1. Namen und Berufe aller gallier
+SELECT gname, gberuf FROM gallier;
+
+--2. Name sowie der Wohnort aller römer
+SELECT rname, rort FROM römer;
+
+--3. anzahl aller in Kleinbonum lebenden römer
+SELECT COUNT(rnr) AS 'Anzahl Kleinbonumer' FROM römer
+WHERE rort= 'Kleinbonum';
+
+--4. alle galliernamen in alphabetischer Reihenfolge
+SELECT gname FROM gallier
+ORDER BY gname ASC;
+
+--5. alle Bände nach erscheinungsdatum sortiert
+SELECT * FROM band
+ORDER BY bjahr ASC;
+
+--6. alle Gallier die in Bänden eine besondere Rolle spielen
+SELECT gname FROM gallier a JOIN band b
+ON a.gnr=b.bchar;
+
+--7. der Gallier mit dem höchsten Wildschweinkonsum
+SELECT TOP(1) gname, wschweine FROM gallier
+ORDER BY wschweine DESC;
+
+
+-- oder
+SELECT gname, wschweine FROM gallier
+WHERE wschweine IN (SELECT MAX(wschweine) FROM gallier);
+
+
+--------------------------------------------------------------------------------------------------------
+
+-- OFFSET und FETCH
+
+-- TOP Klausel
+-- gesucht sind die drei gallier mit dem höchsten Wildschweinverbrauch
+SELECT TOP(3) gname, wschweine FROM gallier
+ORDER BY wschweine DESC;
+
+-- mit OFFSET gibt man an, wieviele Datensätze übersprungen werden sollen bevor ein Ergebnis
+-- ausgegeben wird
+
+-- FETCH gibt die Anzahl der Zeilen an, die zurückgegeben werden sollen, nachdem OFFSET 
+-- verarbeitet wurde
+
+-- gesucht sind die nächsten 5 Gallier nach den drei "stärksten" Wildschweinessern
+SELECT gname, wschweine, gort FROM gallier
+ORDER BY wschweine DESC
+OFFSET 3 ROWS FETCH NEXT 5 ROWS ONLY; 
+
+
+-- Rangfolgen mit RANK
+
+-- kann mit PARTITION BY verwendet werden
+-- teilt das von der FROM klausel erzeugte Ergebnis, in Partitionen, auf die 
+-- die RANK funktion angewendet wird
+
+-- Die Rangfolge der Gallier anhand der Wildschweine
+SELECT gname, RANK() OVER(ORDER BY wschweine DESC) AS 'Rang', wschweine FROM gallier;
+
+
+-- Rangfolgefunktion NTILE
+
+-- verteilt die zeilen in einer sortierten Partition in eine fest angelegte
+-- Anzahl von Gruppen
+
+-- Bildung von 4 Bandgruppen mit zuordnung ihres Erscheinungsjahres
+SELECT NTILE(4) OVER(ORDER BY bjahr ASC) AS 'Kategorie', bname, bjahr FROM band
+ORDER BY bjahr;
+
+
+
+--------------------------------------------------------------------------------------------------------
+
+-- Temporäre Tabellen
+
+-- Lokale Temporäre Tabellen können von jedem Benutzer angelegt werden.
+-- Sie sind nur für die aktuelle Sitzung verfügbar
+-- Sie werden mit einem # markiert
+
+-- Die temporäre Tabelle hungrige_gallier soll erstellt werden. Sie soll alle Gallier
+-- die 10 oder mehr Wildschweine essen beinhalten
+SELECT gnr, gname, wschweine INTO #hungrige_gallier FROM gallier
+WHERE wschweine >= 10;
+
+SELECT * FROM #hungrige_gallier;
+
+-- lokale temporäre Tabellen #tabellenname
+-- globale temporäre Tabellen ##tabellenname
+
+SELECT gnr, gname, wschweine INTO ##hungrigere_gallier FROM gallier
+WHERE wschweine >= 10;
+
+SELECT * FROM ##hungrigere_gallier;
+
+
+-- gesucht sind alle gallier die weniger Wildschweine Verdrücken als der höchste Wschweine Wert
+-- in der temporären Tabelle
+SELECT * FROM gallier
+WHERE wschweine < (SELECT MAX(wschweine) FROM #hungrige_gallier);
