@@ -1,0 +1,163 @@
+-- Tabelle Standard erstellen
+
+USE master;
+
+
+-- eventuell vorhandene Datenbank Standard löschen
+IF EXISTS (SELECT * FROM sys.databases WHERE database_id= db_id('Standard'))
+DROP DATABASE Standard;
+
+
+-- neue Datenbank Standard erstellen
+CREATE DATABASE Standard;
+
+USE Standard;
+
+
+-- Schemas erstellen
+CREATE SCHEMA verwaltung AUTHORIZATION dbo;
+
+CREATE SCHEMA einkauf AUTHORIZATION dbo;
+
+
+-- Tabellen erstellen
+
+-- Tabelle Lieferant
+CREATE TABLE verwaltung.lieferant(
+lnr nchar(3) NOT NULL CONSTRAINT lnr_ps PRIMARY KEY
+	CONSTRAINT lnr_chk CHECK(lnr LIKE 'l%' AND CAST(SUBSTRING(lnr,2,2) AS INT)BETWEEN 1 AND 99),
+lname nvarchar(50) NOT NULL
+	CONSTRAINT lname_chk CHECK(lname LIKE '[A-Z]%'),
+status int NULL
+	CONSTRAINT status_chk CHECK(status BETWEEN 1 AND 100),
+lstadt nvarchar(50) NULL
+	CONSTRAINT lstadt_chk CHECK(lstadt LIKE '[A-Z]%')
+);
+
+
+-- Tabelle Artikel
+CREATE TABLE verwaltung.artikel(
+anr nchar(3) NOT NULL CONSTRAINT anr_ps PRIMARY KEY
+	CONSTRAINT anr_chk CHECK(anr LIKE 'a%' AND CAST(SUBSTRING(anr,2,2) AS INT)BETWEEN 1 AND 99),
+aname nvarchar(50) NOT NULL
+	CONSTRAINT aname_chk CHECK(aname LIKE '[A-Z]%'),
+farbe nvarchar(10) NULL
+	CONSTRAINT farb_chk CHECK( farbe IN ('rot','blau','gelb','grün','schwarz','braun')),
+gewicht decimal(9,2) NULL,
+astadt nvarchar(50) NOT NULL
+	CONSTRAINT astadt_chk CHECK(astadt LIKE '[A-Z]%'),
+amenge int NULL
+	CONSTRAINT amenge_chk CHECK(amenge BETWEEN 1 AND 10000)
+);
+
+
+-- Tabelle lieferung
+CREATE TABLE einkauf.lieferung(
+lnr nchar(3) NOT NULL CONSTRAINT lnr_fs REFERENCES verwaltung.lieferant(lnr)
+	ON UPDATE CASCADE,
+anr nchar(3) NOT NULL CONSTRAINT anr_fs REFERENCES verwaltung.artikel(anr)
+	ON UPDATE CASCADE,
+lmenge int NULL
+	CONSTRAINT lmenge_chk CHECK(lmenge BETWEEN 1 AND 10000),
+ldatum datetime NOT NULL CONSTRAINT lief_ps Primary KEY(lnr,anr,ldatum)
+);
+
+
+-- Tabelle mit Anfangsdaten füllen
+
+-- Tabelle Lieferant
+INSERT INTO verwaltung.lieferant VALUES('L01','Schmidt',20,'Hamburg');
+INSERT INTO verwaltung.lieferant VALUES('L02','Jonas',10,'Ludwigshafen');
+INSERT INTO verwaltung.lieferant VALUES('L03','Blank',30,'Ludwigshafen');
+INSERT INTO verwaltung.lieferant VALUES('L04','Clark',20,'Hamburg');
+INSERT INTO verwaltung.lieferant VALUES('L05','Adam',30,'Aachen');
+
+CREATE SYNONYM lieferant FOR standard.verwaltung.lieferant;
+
+SELECT * FROM lieferant;
+
+
+-- Tabelle artikel
+INSERT INTO verwaltung.artikel VALUES('A01','Mutter','rot',12,'Hamburg',800);
+INSERT INTO verwaltung.artikel VALUES('A02','Bolzen','grün',17,'Ludwigshafen',1200);
+INSERT INTO verwaltung.artikel VALUES('A03','Schraube','blau',17,'Mannheim',400);
+INSERT INTO verwaltung.artikel VALUES('A04','Schraube','rot',14,'Hamburg',900);
+INSERT INTO verwaltung.artikel VALUES('A05','Nockenwelle','blau',12,'Ludwigshafen',1300);
+INSERT INTO verwaltung.artikel VALUES('A06','Zahnrad','rot',19,'Hamburg',500);
+
+CREATE SYNONYM artikel FOR standard.verwaltung.artikel;
+
+SELECT * FROM artikel;
+
+
+-- Tabelle Lieferung
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A01', 300, '18.05.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A02', 200, '13.07.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A03', 400, '01.01.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A04', 200, '25.07.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A05', 100, '01.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L01', 'A06', 100, '23.07.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L02', 'A01', 300, '02.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L02', 'A02', 400, '05.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L03', 'A02', 200, '06.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L04', 'A02', 200, '09.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L04', 'A04', 300, '20.08.90');
+INSERT INTO Einkauf.Lieferung VALUES ('L04', 'A05', 400, '21.08.90');
+
+CREATE SYNONYM lieferung FOR standard.einkauf.lieferung;
+
+SELECT * FROM lieferung;
+
+-- erstellen von Geschäftsregeln
+
+-- Addieren der Liefermenge zur entsprechenden Lagermenge bei einer neuen lieferung
+CREATE TRIGGER menge_lief_neu
+ON einkauf.lieferung
+FOR INSERT AS
+IF (SELECT inserted.lmenge FROM inserted) > 0
+	BEGIN
+	UPDATE artikel
+	SET amenge = amenge+inserted.lmenge
+	FROM artikel JOIN inserted ON artikel.anr=inserted.anr
+END;
+
+
+-- Subtrahieren der Liefermenge von der entsprechenden Lagermenge beim stonieren oder
+-- löschen einer Lieferung
+CREATE TRIGGER lief_lösch
+ON einkauf.lieferung
+FOR DELETE AS
+UPDATE verwaltung.artikel
+SET amenge= amenge - deleted.lmenge
+FROM verwaltung.artikel JOIN deleted ON artikel.anr=deleted.anr;
+
+
+-- Ändern der Lagermenge des entsprechenden Artikels bei änderung der Liefermenge
+-- einer vorhanden Lieferung
+CREATE TRIGGER lmenge_lief_ändern
+ON einkauf.lieferung
+FOR UPDATE AS
+IF UPDATE(lmenge)
+	BEGIN
+	UPDATE verwaltung.artikel
+	SET amenge= amenge + inserted.lmenge - deleted.lmenge
+	FROM verwaltung.artikel JOIN inserted ON artikel.anr=inserted.anr
+	JOIN deleted ON artikel.anr=deleted.anr
+END;
+
+
+-- Ändern der Lagermenge wenn die Artikelnummer einer Lieferung geändert wird
+CREATE TRIGGER anr_lief_ändern
+ON einkauf.lieferung
+FOR UPDATE AS
+IF UPDATE(anr)
+	BEGIN
+	UPDATE verwaltung.artikel
+	SET amenge= amenge - deleted.lmenge
+	FROM verwaltung.artikel JOIN deleted ON artikel.anr=deleted.anr
+	
+	UPDATE verwaltung.artikel
+	SET amenge= amenge + inserted.lmenge
+	FROM verwaltung.artikel JOIN inserted ON artikel.anr=inserted.anr
+END;
+
